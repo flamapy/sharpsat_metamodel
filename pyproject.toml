@@ -14,7 +14,6 @@ dependencies = [
     "flamapy-fw~=2.6.0.dev4",
     "flamapy-fm~=2.6.0.dev4",
     "flamapy-sat~=2.6.0.dev4",
-    "pyapproxmc~=4.3",
     "pyunigen~=2.5",
 ]
 

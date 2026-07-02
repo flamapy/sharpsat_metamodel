@@ -19,7 +19,7 @@ It complements the existing backends:
 pip install flamapy-sharpsat
 ```
 
-This pulls in `pyapproxmc` and `pyunigen` (and the flamapy core/FM/SAT plugins).
+This pulls in `pyunigen` (which bundles ApproxMC), and the flamapy core/FM/SAT plugins.
 
 ## Operations
 

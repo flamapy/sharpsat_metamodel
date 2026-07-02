@@ -60,11 +60,46 @@ def _is_valid(fm: FeatureModel, selected: set) -> bool:
     return op.execute(sat_model).get_result()
 
 
+_IMPLIED_VARS_UVL = """features
+    Root {abstract}
+        mandatory
+            Base
+                mandatory
+                    Core
+        optional
+            A
+            B
+            C
+constraints
+    A => B
+"""
+
+
+def _fm_from(uvl):
+    handle, path = tempfile.mkstemp(suffix='.uvl')
+    try:
+        with os.fdopen(handle, 'w') as file:
+            file.write(uvl)
+        return UVLReader(path).transform()
+    finally:
+        os.remove(path)
+
+
 def test_approximate_count_matches_exact_on_small_model():
     fm = _fm()
     exact = PySATConfigurationsNumber().execute(FmToPysat(fm).transform()).get_result()
     approx = SharpSATConfigurationsNumber().execute(FmToSharpSAT(fm).transform()).get_result()
     # ApproxMC's default (epsilon, delta) is exact on a model this small.
+    assert approx == exact
+
+
+def test_count_is_correct_with_implied_variables():
+    # Regression guard: models with implied variables (mandatory chains, root unit clause)
+    # must not be undercounted. The standalone pyapproxmc binding halved these; the UniGen
+    # ApproxMC invocation used by the counter does not.
+    fm = _fm_from(_IMPLIED_VARS_UVL)
+    exact = PySATConfigurationsNumber().execute(FmToPysat(fm).transform()).get_result()
+    approx = SharpSATConfigurationsNumber().execute(FmToSharpSAT(fm).transform()).get_result()
     assert approx == exact
 
 
