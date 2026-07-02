@@ -12,13 +12,11 @@ from flamapy.metamodels.sharpsat_metamodel.operations import (
     SharpSATSampling,
 )
 
-# Exact oracle via BDD.
-from flamapy.metamodels.bdd_metamodel.transformations import FmToBDD
-from flamapy.metamodels.bdd_metamodel.operations.bdd_configurations_number import (
-    BDDConfigurationsNumber,
-)
-# Validity oracle via SAT.
+# Exact oracle and validity oracle via SAT (a declared dependency, unlike BDD).
 from flamapy.metamodels.pysat_metamodel.transformations import FmToPysat
+from flamapy.metamodels.pysat_metamodel.operations.pysat_configurations_number import (
+    PySATConfigurationsNumber,
+)
 from flamapy.metamodels.pysat_metamodel.operations.pysat_satisfiable_configuration import (
     PySATSatisfiableConfiguration,
 )
@@ -64,7 +62,7 @@ def _is_valid(fm: FeatureModel, selected: set) -> bool:
 
 def test_approximate_count_matches_exact_on_small_model():
     fm = _fm()
-    exact = BDDConfigurationsNumber().execute(FmToBDD(fm).transform()).get_result()
+    exact = PySATConfigurationsNumber().execute(FmToPysat(fm).transform()).get_result()
     approx = SharpSATConfigurationsNumber().execute(FmToSharpSAT(fm).transform()).get_result()
     # ApproxMC's default (epsilon, delta) is exact on a model this small.
     assert approx == exact
