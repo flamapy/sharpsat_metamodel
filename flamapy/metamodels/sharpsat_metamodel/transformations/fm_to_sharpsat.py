@@ -26,7 +26,12 @@ class FmToSharpSAT(ModelToModel):
         self.destination_model = SharpSATModel()
 
     def transform(self) -> SharpSATModel:
-        sat_model = FmToPysat(self.source_model, cnf_method=self.cnf_method).transform()
+        # Only pass cnf_method when a non-default encoding is requested, so the plugin also
+        # works against releases of flamapy-sat that predate the Tseytin cnf_method option.
+        if self.cnf_method == 'distributive':
+            sat_model = FmToPysat(self.source_model).transform()
+        else:
+            sat_model = FmToPysat(self.source_model, cnf_method=self.cnf_method).transform()
         model = self.destination_model
         model.clauses = [list(clause) for clause in sat_model.get_all_clauses().clauses]
         model.variables = dict(sat_model.variables)

@@ -69,7 +69,7 @@ class SharpSATSampling(Sampling):
 
 
 def _dedupe(configurations: list[Configuration]) -> list[Configuration]:
-    seen: set = set()
+    seen: set[frozenset[Any]] = set()
     unique: list[Configuration] = []
     for configuration in configurations:
         key = frozenset(name for name, value in configuration.elements.items() if value)
