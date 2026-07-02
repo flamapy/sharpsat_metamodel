@@ -1,15 +1,14 @@
 from flamapy.core.transformations import ModelToModel
-from flamapy.metamodels.fm_metamodel.models import FeatureModel
-from flamapy.metamodels.pysat_metamodel.transformations import FmToPysat
+from flamapy.metamodels.fm_metamodel.models import FeatureModel, ClauseSet
 from flamapy.metamodels.sharpsat_metamodel.models import SharpSATModel
 
 
 class FmToSharpSAT(ModelToModel):
     """Transform a feature model into a SharpSAT (CNF) model.
 
-    The CNF is produced by reusing the SAT metamodel's ``FmToPysat`` transformation, so
-    the same constraint encoding (and the optional Tseytin encoding via ``cnf_method``) is
-    available here.
+    The CNF is produced by the feature-model ``ClauseSet`` (no SAT-solver dependency), so the
+    same constraint encoding (and the optional Tseytin encoding via ``cnf_method``) is available
+    here.
     """
 
     @staticmethod
@@ -26,16 +25,11 @@ class FmToSharpSAT(ModelToModel):
         self.destination_model = SharpSATModel()
 
     def transform(self) -> SharpSATModel:
-        # Only pass cnf_method when a non-default encoding is requested, so the plugin also
-        # works against releases of flamapy-sat that predate the Tseytin cnf_method option.
-        if self.cnf_method == 'distributive':
-            sat_model = FmToPysat(self.source_model).transform()
-        else:
-            sat_model = FmToPysat(self.source_model, cnf_method=self.cnf_method).transform()
+        clause_set = ClauseSet.from_feature_model(self.source_model, cnf_method=self.cnf_method)
         model = self.destination_model
-        model.clauses = [list(clause) for clause in sat_model.get_all_clauses().clauses]
-        model.variables = dict(sat_model.variables)
-        model.features = dict(sat_model.features)
-        model.auxiliary_variables = set(sat_model.auxiliary_variables)
+        model.clauses = [list(clause) for clause in clause_set.clauses]
+        model.variables = dict(clause_set.variables)
+        model.features = dict(clause_set.features)
+        model.auxiliary_variables = set(clause_set.auxiliary_variables)
         model.original_model = self.source_model
         return model
