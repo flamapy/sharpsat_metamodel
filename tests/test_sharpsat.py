@@ -1,26 +1,40 @@
 """Tests for the sharpsat metamodel: approximate counting and almost-uniform sampling."""
 import os
 import tempfile
+from itertools import product
 
 import pytest
 
 from flamapy.metamodels.fm_metamodel.transformations import UVLReader
-from flamapy.metamodels.fm_metamodel.models import FeatureModel
+from flamapy.metamodels.fm_metamodel.models import FeatureModel, ClauseSet
 from flamapy.metamodels.sharpsat_metamodel.transformations import FmToSharpSAT
 from flamapy.metamodels.sharpsat_metamodel.operations import (
     SharpSATConfigurationsNumber,
     SharpSATSampling,
 )
-
-# Exact oracle and validity oracle via SAT (a declared dependency, unlike BDD).
-from flamapy.metamodels.pysat_metamodel.transformations import FmToPysat
-from flamapy.metamodels.pysat_metamodel.operations.pysat_configurations_number import (
-    PySATConfigurationsNumber,
-)
-from flamapy.metamodels.pysat_metamodel.operations.pysat_satisfiable_configuration import (
-    PySATSatisfiableConfiguration,
-)
 from flamapy.metamodels.configuration_metamodel.models.configuration import Configuration
+
+
+# Exact oracle: enumerate the valid configurations by brute-forcing the CNF produced by
+# fm_metamodel's solver-agnostic ClauseSet — no SAT backend, so the tests only depend on
+# flamapy-fm (already required) and match sharpsat's own encoding path.
+def _valid_configs(fm: FeatureModel) -> set:
+    """Valid configurations as frozensets of selected feature names."""
+    clause_set = ClauseSet.from_feature_model(fm)
+    name_of = {vid: name for name, vid in clause_set.variables.items()}
+    var_ids = sorted({abs(lit) for clause in clause_set.clauses for lit in clause}
+                     | set(clause_set.variables.values()))
+    configs = set()
+    for bits in product((False, True), repeat=len(var_ids)):
+        assignment = dict(zip(var_ids, bits))
+        if all(any((lit > 0) == assignment[abs(lit)] for lit in clause)
+               for clause in clause_set.clauses):
+            configs.add(frozenset(name_of[v] for v in var_ids if assignment[v] and v in name_of))
+    return configs
+
+
+def _exact_count(fm: FeatureModel) -> int:
+    return len(_valid_configs(fm))
 
 
 _UVL = """features
@@ -51,13 +65,7 @@ def _all_feature_names(fm: FeatureModel) -> list[str]:
 
 
 def _is_valid(fm: FeatureModel, selected: set) -> bool:
-    sat_model = FmToPysat(fm).transform()
-    elements = {name: (name in selected) for name in _all_feature_names(fm)}
-    configuration = Configuration(elements)
-    configuration.set_full(True)
-    op = PySATSatisfiableConfiguration()
-    op.set_configuration(configuration)
-    return op.execute(sat_model).get_result()
+    return frozenset(selected) in _valid_configs(fm)
 
 
 _IMPLIED_VARS_UVL = """features
@@ -87,7 +95,7 @@ def _fm_from(uvl):
 
 def test_approximate_count_matches_exact_on_small_model():
     fm = _fm()
-    exact = PySATConfigurationsNumber().execute(FmToPysat(fm).transform()).get_result()
+    exact = _exact_count(fm)
     approx = SharpSATConfigurationsNumber().execute(FmToSharpSAT(fm).transform()).get_result()
     # ApproxMC's default (epsilon, delta) is exact on a model this small.
     assert approx == exact
@@ -98,7 +106,7 @@ def test_count_is_correct_with_implied_variables():
     # must not be undercounted. The standalone pyapproxmc binding halved these; the UniGen
     # ApproxMC invocation used by the counter does not.
     fm = _fm_from(_IMPLIED_VARS_UVL)
-    exact = PySATConfigurationsNumber().execute(FmToPysat(fm).transform()).get_result()
+    exact = _exact_count(fm)
     approx = SharpSATConfigurationsNumber().execute(FmToSharpSAT(fm).transform()).get_result()
     assert approx == exact
 
