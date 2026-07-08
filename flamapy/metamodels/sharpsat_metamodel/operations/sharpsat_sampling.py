@@ -16,6 +16,8 @@ class SharpSATSampling(Sampling):
     configuration fixes features as assumptions.
     """
 
+    exact = False  # reported in the OperationResult provenance envelope
+
     def __init__(self, seed: int = 1) -> None:
         self._sample_size = 1
         self._with_replacement = False

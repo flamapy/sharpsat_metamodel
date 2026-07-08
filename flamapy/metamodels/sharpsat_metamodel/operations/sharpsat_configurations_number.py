@@ -21,6 +21,8 @@ class SharpSATConfigurationsNumber(ConfigurationsNumber):
     ApproxMC invocation does not have that problem.
     """
 
+    exact = False  # reported in the OperationResult provenance envelope
+
     def __init__(self, seed: int = 1) -> None:
         self._result = 0
         self._seed = seed
