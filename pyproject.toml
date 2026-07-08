@@ -25,6 +25,9 @@ dev = [
     "coverage",
 ]
 
+[project.entry-points."flamapy.plugins"]
+sharpsat = "flamapy.metamodels.sharpsat_metamodel"
+
 [project.urls]
 Homepage = "https://github.com/flamapy/sharpsat_metamodel"
 
