@@ -7,6 +7,8 @@ from flamapy.core.operations import Sampling
 from flamapy.metamodels.configuration_metamodel.models.configuration import Configuration
 from flamapy.metamodels.sharpsat_metamodel.models import SharpSATModel
 
+from ._satcheck import satisfiable
+
 
 class SharpSATSampling(Sampling):
     """Almost-uniform sampling of valid configurations with UniGen.
@@ -14,6 +16,10 @@ class SharpSATSampling(Sampling):
     Unlike an enumerate-first-N sampler, UniGen draws configurations almost uniformly at
     random. Sampling is projected onto the feature variables, and an optional partial
     configuration fixes features as assumptions.
+
+    Unsatisfiable input (a void model, or a partial configuration that contradicts it)
+    short-circuits to an empty sample through a plain SAT pre-check: pyunigen segfaults
+    the interpreter on UNSAT input.
     """
 
     exact = False  # reported in the OperationResult provenance envelope
@@ -42,14 +48,20 @@ class SharpSATSampling(Sampling):
 
     def execute(self, model: VariabilityModel) -> 'SharpSATSampling':
         sharpsat_model = cast(SharpSATModel, model)
-        sampler = pyunigen.Sampler(seed=self._seed)
-        for clause in sharpsat_model.clauses:
-            sampler.add_clause(clause)
+        clauses = [list(clause) for clause in sharpsat_model.clauses]
         if self._partial_configuration is not None:
             for name, value in self._partial_configuration.elements.items():
                 variable = sharpsat_model.variables.get(name)
                 if variable is not None:
-                    sampler.add_clause([variable if value else -variable])
+                    clauses.append([variable if value else -variable])
+
+        if not satisfiable(clauses):
+            self._result = []
+            return self
+
+        sampler = pyunigen.Sampler(seed=self._seed)
+        for clause in clauses:
+            sampler.add_clause(clause)
 
         _cells, _hashes, samples = sampler.sample(
             num=self._sample_size, sampling_set=sharpsat_model.feature_variables()

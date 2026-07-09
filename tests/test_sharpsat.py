@@ -146,3 +146,47 @@ def test_without_replacement_deduplicates():
     sample = op.execute(model).get_sample()
     keys = [frozenset(n for n, v in c.elements.items() if v) for c in sample]
     assert len(keys) == len(set(keys))   # no duplicates
+
+
+# ---------------------------------------------------------------------------
+# UNSAT guard: pyunigen segfaults the interpreter on unsatisfiable input, so both
+# operations must short-circuit without ever reaching it.
+# ---------------------------------------------------------------------------
+
+_VOID_UVL = """features
+    Root {abstract}
+        mandatory
+            A
+            B
+constraints
+    A => !B
+"""
+
+
+def test_void_model_counts_zero_without_crashing():
+    model = FmToSharpSAT(_fm_from(_VOID_UVL)).transform()
+    operation = SharpSATConfigurationsNumber()
+    assert operation.execute(model).get_result() == 0
+
+
+def test_void_model_samples_empty_without_crashing():
+    model = FmToSharpSAT(_fm_from(_VOID_UVL)).transform()
+    operation = SharpSATSampling()
+    operation.set_sample_size(5)
+    assert operation.execute(model).get_result() == []
+
+
+def test_unsatisfiable_partial_configuration_samples_empty():
+    model = FmToSharpSAT(_fm()).transform()
+    operation = SharpSATSampling()
+    operation.set_sample_size(3)
+    # A and B are mutually exclusive in _UVL (A => !B).
+    operation.set_partial_configuration(Configuration({'A': True, 'B': True}))
+    assert operation.execute(model).get_result() == []
+
+
+def test_satisfiable_behavior_unchanged_by_the_guard():
+    fm = _fm()
+    model = FmToSharpSAT(fm).transform()
+    operation = SharpSATConfigurationsNumber()
+    assert operation.execute(model).get_result() == _exact_count(fm)

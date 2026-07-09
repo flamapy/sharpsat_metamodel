@@ -6,6 +6,8 @@ from flamapy.core.models import VariabilityModel
 from flamapy.core.operations import ConfigurationsNumber
 from flamapy.metamodels.sharpsat_metamodel.models import SharpSATModel
 
+from ._satcheck import satisfiable
+
 
 class SharpSATConfigurationsNumber(ConfigurationsNumber):
     """Approximate the number of valid configurations with ApproxMC.
@@ -19,6 +21,9 @@ class SharpSATConfigurationsNumber(ConfigurationsNumber):
     mis-configures ApproxMC's projected counting on feature-model CNFs with implied variables
     (the root and mandatory-relation unit clauses), undercounting by a factor of two; UniGen's
     ApproxMC invocation does not have that problem.
+
+    Unsatisfiable models short-circuit to 0 through a plain SAT pre-check: pyunigen
+    segfaults the interpreter on UNSAT input.
     """
 
     exact = False  # reported in the OperationResult provenance envelope
@@ -35,6 +40,9 @@ class SharpSATConfigurationsNumber(ConfigurationsNumber):
 
     def execute(self, model: VariabilityModel) -> 'SharpSATConfigurationsNumber':
         sharpsat_model = cast(SharpSATModel, model)
+        if not satisfiable(sharpsat_model.clauses):
+            self._result = 0
+            return self
         counter = pyunigen.Sampler(seed=self._seed)
         for clause in sharpsat_model.clauses:
             counter.add_clause(clause)
