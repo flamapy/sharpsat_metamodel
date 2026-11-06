@@ -19,7 +19,7 @@ class FmToSharpSAT(ModelToModel):
     def get_destination_extension() -> str:
         return 'sharpsat'
 
-    def __init__(self, source_model: FeatureModel, cnf_method: str = 'distributive') -> None:
+    def __init__(self, source_model: FeatureModel, cnf_method: str = 'auto') -> None:
         self.source_model = source_model
         self.cnf_method = cnf_method
         self.destination_model = SharpSATModel()
