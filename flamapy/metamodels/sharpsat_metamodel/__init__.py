@@ -12,6 +12,7 @@ from flamapy.core.models.language_level import LanguageLevel, MajorLevel, MinorL
 # largest size measured.
 MANIFEST = PluginManifest(
     name='sharpsat',
+    calibration='2026-11-06',
     extension='sharpsat',
     supported_level=LanguageLevel(MajorLevel.BOOLEAN, {MinorLevel.GROUP_CARDINALITY}),
     max_features=2000,
