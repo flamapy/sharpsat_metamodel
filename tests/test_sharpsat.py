@@ -190,3 +190,53 @@ def test_satisfiable_behavior_unchanged_by_the_guard():
     model = FmToSharpSAT(fm).transform()
     operation = SharpSATConfigurationsNumber()
     assert operation.execute(model).get_result() == _exact_count(fm)
+
+
+_TSEYTIN_UVL = """features
+    Root {abstract}
+        optional
+            A
+            B
+            C
+            D
+            E
+            F
+constraints
+    (A & B & C) | (D & E & F) | (B & E & F)
+"""
+
+# [1..2] over A, B, C (3 + 3 selections) times D optional: 12 configurations.
+_GROUP_UVL = """features
+    Root {abstract}
+        [1..2]
+            A
+            B
+            C
+        optional
+            D
+"""
+
+
+def test_cnf_methods_agree():
+    """Tseytin auxiliary variables must not change the count or let samples leak them."""
+    fm = _fm_from(_TSEYTIN_UVL)
+    assert ClauseSet.from_feature_model(fm, cnf_method='auto').auxiliary_variables
+    exact = _exact_count(fm)
+    for method in ('distributive', 'tseytin', 'auto'):
+        model = FmToSharpSAT(fm, cnf_method=method).transform()
+        assert SharpSATConfigurationsNumber().execute(model).get_result() == exact, method
+        sampler = SharpSATSampling()
+        sampler.set_sample_size(5)
+        for config in sampler.execute(model).get_sample():
+            assert _is_valid(fm, set(config.get_selected_elements())), method
+
+
+def test_group_cardinality():
+    fm = _fm_from(_GROUP_UVL)
+    model = FmToSharpSAT(fm).transform()
+    assert SharpSATConfigurationsNumber().execute(model).get_result() == 12
+    sampler = SharpSATSampling()
+    sampler.set_sample_size(5)
+    for config in sampler.execute(model).get_sample():
+        selected = set(config.get_selected_elements())
+        assert 1 <= len(selected & {'A', 'B', 'C'}) <= 2
