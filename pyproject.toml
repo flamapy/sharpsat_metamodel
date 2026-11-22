@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flamapy-sharpsat"
-version = "2.9.0.dev2"
+version = "2.9.0.dev3"
 description = "flamapy-sharpsat is a plugin to flamapy providing approximate model counting and almost-uniform sampling"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 authors = [{ name = "Flamapy", email = "flamapy@us.es" }]
 requires-python = ">=3.11"
 dependencies = [
-    "flamapy-fw~=2.9.0.dev2",
-    "flamapy-fm~=2.9.0.dev2",
+    "flamapy-fw~=2.9.0.dev3",
+    "flamapy-fm~=2.9.0.dev3",
     "pyunigen~=2.5",
     "python-sat",
 ]
